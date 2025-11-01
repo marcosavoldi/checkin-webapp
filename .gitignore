@@ -1,5 +1,4 @@
-# Firebase configuration with real API keys
-firebase-config.js
+# Firebase configuration with real API keysgit add firebase-config.js .gitignore
 
 # Node modules (if you add build tools later)
 node_modules/
