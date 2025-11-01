@@ -8,15 +8,39 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .gradient-blue {
+            background: linear-gradient(135deg, #2196F3 0%, #00BCD4 100%);
+        }
+        .gradient-green {
+            background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
+        }
+        .gradient-orange {
+            background: linear-gradient(135deg, #FF9800 0%, #FF5722 100%);
+        }
+        .gradient-pink {
+            background: linear-gradient(135deg, #E91E63 0%, #9C27B0 100%);
+        }
+        .card-hover {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+    </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 min-h-screen">
     <div id="root"></div>
 
     <script type="module">
         // Import Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         // Import configuration
         import { firebaseConfig } from './firebase-config.js';
@@ -39,6 +63,7 @@
         window.doc = doc;
         window.getDoc = getDoc;
         window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
         window.query = query;
         window.where = where;
         window.orderBy = orderBy;
@@ -86,7 +111,11 @@
                 invalidDate: 'Data non valida',
                 invalidPhone: 'Numero di telefono non valido',
                 bookingNotFound: 'Prenotazione non trovata',
-                loading: 'Caricamento...'
+                loading: 'Caricamento...',
+                deleteProperty: 'Elimina Struttura',
+                confirmDelete: 'Sei sicuro di voler eliminare questa struttura?',
+                checkInInstructions: 'Istruzioni Check-in',
+                instructionsHelp: 'Le istruzioni verranno inviate all\'ospite nella lingua da lui selezionata'
             },
             en: {
                 login: 'Login with Google',
@@ -124,7 +153,11 @@
                 invalidDate: 'Invalid date',
                 invalidPhone: 'Invalid phone number',
                 bookingNotFound: 'Booking not found',
-                loading: 'Loading...'
+                loading: 'Loading...',
+                deleteProperty: 'Delete Property',
+                confirmDelete: 'Are you sure you want to delete this property?',
+                checkInInstructions: 'Check-in Instructions',
+                instructionsHelp: 'Instructions will be sent to the guest in their selected language'
             },
             fr: {
                 login: 'Connexion avec Google',
@@ -162,7 +195,11 @@
                 invalidDate: 'Date invalide',
                 invalidPhone: 'Numéro de téléphone invalide',
                 bookingNotFound: 'Réservation non trouvée',
-                loading: 'Chargement...'
+                loading: 'Chargement...',
+                deleteProperty: 'Supprimer Propriété',
+                confirmDelete: 'Êtes-vous sûr de vouloir supprimer cette propriété?',
+                checkInInstructions: 'Instructions d\'Arrivée',
+                instructionsHelp: 'Les instructions seront envoyées à l\'invité dans la langue sélectionnée'
             },
             de: {
                 login: 'Mit Google anmelden',
@@ -200,7 +237,11 @@
                 invalidDate: 'Ungültiges Datum',
                 invalidPhone: 'Ungültige Telefonnummer',
                 bookingNotFound: 'Buchung nicht gefunden',
-                loading: 'Laden...'
+                loading: 'Laden...',
+                deleteProperty: 'Unterkunft Löschen',
+                confirmDelete: 'Sind Sie sicher, dass Sie diese Unterkunft löschen möchten?',
+                checkInInstructions: 'Check-in Anweisungen',
+                instructionsHelp: 'Anweisungen werden dem Gast in der ausgewählten Sprache gesendet'
             },
             es: {
                 login: 'Iniciar sesión con Google',
@@ -238,7 +279,11 @@
                 invalidDate: 'Fecha inválida',
                 invalidPhone: 'Número de teléfono inválido',
                 bookingNotFound: 'Reserva no encontrada',
-                loading: 'Cargando...'
+                loading: 'Cargando...',
+                deleteProperty: 'Eliminar Propiedad',
+                confirmDelete: '¿Está seguro de que desea eliminar esta propiedad?',
+                checkInInstructions: 'Instrucciones de Check-in',
+                instructionsHelp: 'Las instrucciones se enviarán al huésped en el idioma seleccionado'
             }
         };
 
@@ -251,16 +296,16 @@
             { code: 'es', flag: '🇪🇸', name: 'Español' }
         ];
 
-        // Language Selector Component
+        // Language Selector Component (NON FISSO - solo in alto alla pagina)
         function LanguageSelector({ currentLang, onLanguageChange }) {
             return (
-                <div className="flex gap-2 justify-center mb-6">
+                <div className="flex gap-3 justify-center py-4">
                     {languages.map(lang => (
                         <button
                             key={lang.code}
                             onClick={() => onLanguageChange(lang.code)}
-                            className={`text-3xl transition-transform hover:scale-110 ${
-                                currentLang === lang.code ? 'scale-125' : 'opacity-50'
+                            className={`text-3xl transition-all hover:scale-110 ${
+                                currentLang === lang.code ? 'scale-125 drop-shadow-lg' : 'opacity-50 grayscale'
                             }`}
                             title={lang.name}
                         >
@@ -272,7 +317,7 @@
         }
 
         // Login Page Component
-        function LoginPage({ t, onLogin }) {
+        function LoginPage({ t }) {
             const [loading, setLoading] = useState(false);
 
             const handleLogin = async () => {
@@ -290,14 +335,17 @@
 
             return (
                 <div className="min-h-screen flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-                        <h1 className="text-3xl font-bold text-center mb-6 text-blue-600">
-                            Check-in Casa Vacanze
-                        </h1>
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full card-hover">
+                        <div className="gradient-bg text-white rounded-xl p-6 mb-6 text-center">
+                            <h1 className="text-3xl font-bold mb-2">
+                                🏠 Check-in
+                            </h1>
+                            <p className="text-sm opacity-90">Casa Vacanze Management</p>
+                        </div>
                         <button
                             onClick={handleLogin}
                             disabled={loading}
-                            className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2"
+                            className="w-full gradient-blue text-white py-4 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-3 font-semibold text-lg"
                         >
                             <svg className="w-6 h-6" viewBox="0 0 24 24">
                                 <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
@@ -312,9 +360,18 @@
         // Admin Dashboard Component
         function AdminDashboard({ t, user, onLogout }) {
             const [properties, setProperties] = useState([]);
-            const [newProperty, setNewProperty] = useState({ name: '', instructions: '' });
-            const [showPropertyForm, setShowPropertyForm] = useState(false);
             const [selectedProperty, setSelectedProperty] = useState(null);
+            const [showAddProperty, setShowAddProperty] = useState(false);
+            const [newProperty, setNewProperty] = useState({
+                name: '',
+                instructions: {
+                    it: '',
+                    en: '',
+                    fr: '',
+                    de: '',
+                    es: ''
+                }
+            });
             const [bookingForm, setBookingForm] = useState({
                 guestName: '',
                 checkIn: '',
@@ -329,70 +386,74 @@
             }, []);
 
             const loadProperties = async () => {
-                try {
-                    const q = window.query(
-                        window.collection(window.firebaseDb, 'properties'),
-                        window.where('ownerId', '==', user.uid),
-                        window.orderBy('createdAt', 'desc')
-                    );
-                    const snapshot = await window.getDocs(q);
-                    const props = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    setProperties(props);
-                } catch (error) {
-                    console.error('Error loading properties:', error);
-                }
+                const q = window.query(
+                    window.collection(window.firebaseDb, 'properties'),
+                    window.where('ownerId', '==', user.uid)
+                );
+                const snapshot = await window.getDocs(q);
+                const props = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setProperties(props);
             };
 
             const loadRecentBookings = async () => {
-                try {
-                    const q = window.query(
-                        window.collection(window.firebaseDb, 'bookings'),
-                        window.where('ownerId', '==', user.uid),
-                        window.orderBy('createdAt', 'desc')
-                    );
-                    const snapshot = await window.getDocs(q);
-                    const bookings = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    setRecentBookings(bookings.slice(0, 10));
-                } catch (error) {
-                    console.error('Error loading bookings:', error);
-                }
+                const q = window.query(
+                    window.collection(window.firebaseDb, 'bookings'),
+                    window.where('ownerId', '==', user.uid),
+                    window.orderBy('createdAt', 'desc')
+                );
+                const snapshot = await window.getDocs(q);
+                const bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setRecentBookings(bookings.slice(0, 10));
             };
 
             const addProperty = async (e) => {
                 e.preventDefault();
-                if (!newProperty.name.trim()) return;
-
                 try {
                     await window.addDoc(window.collection(window.firebaseDb, 'properties'), {
                         name: newProperty.name,
                         checkInInstructions: newProperty.instructions,
                         ownerId: user.uid,
-                        ownerEmail: user.email,
                         createdAt: window.Timestamp.now()
                     });
-                    setNewProperty({ name: '', instructions: '' });
-                    setShowPropertyForm(false);
+                    setNewProperty({
+                        name: '',
+                        instructions: {
+                            it: '',
+                            en: '',
+                            fr: '',
+                            de: '',
+                            es: ''
+                        }
+                    });
+                    setShowAddProperty(false);
                     loadProperties();
+                    alert('✅ Struttura aggiunta con successo!');
                 } catch (error) {
                     console.error('Error adding property:', error);
+                    alert('❌ Errore durante l\'aggiunta della struttura');
+                }
+            };
+
+            const deleteProperty = async (propertyId) => {
+                if (!window.confirm(t.confirmDelete)) return;
+                
+                try {
+                    await window.deleteDoc(window.doc(window.firebaseDb, 'properties', propertyId));
+                    if (selectedProperty?.id === propertyId) {
+                        setSelectedProperty(null);
+                    }
+                    loadProperties();
+                    alert('✅ Struttura eliminata con successo!');
+                } catch (error) {
+                    console.error('Error deleting property:', error);
+                    alert('❌ Errore durante l\'eliminazione');
                 }
             };
 
             const generateBookingLink = async (e) => {
                 e.preventDefault();
-                if (!selectedProperty || !bookingForm.guestName || !bookingForm.checkIn || !bookingForm.checkOut) {
-                    alert('Compila tutti i campi');
-                    return;
-                }
-
                 try {
-                    const bookingData = {
+                    const bookingRef = await window.addDoc(window.collection(window.firebaseDb, 'bookings'), {
                         propertyId: selectedProperty.id,
                         propertyName: selectedProperty.name,
                         guestName: bookingForm.guestName,
@@ -400,14 +461,12 @@
                         checkOut: bookingForm.checkOut,
                         ownerId: user.uid,
                         ownerEmail: user.email,
-                        createdAt: window.Timestamp.now(),
-                        completed: false
-                    };
+                        status: 'pending',
+                        createdAt: window.Timestamp.now()
+                    });
 
-                    const docRef = await window.addDoc(window.collection(window.firebaseDb, 'bookings'), bookingData);
-                    const link = `${window.location.origin}${window.location.pathname}?booking=${docRef.id}`;
+                    const link = `${window.location.origin}${window.location.pathname}?booking=${bookingRef.id}`;
                     setGeneratedLink(link);
-                    setBookingForm({ guestName: '', checkIn: '', checkOut: '' });
                     loadRecentBookings();
                 } catch (error) {
                     console.error('Error creating booking:', error);
@@ -417,201 +476,254 @@
 
             const copyLink = () => {
                 navigator.clipboard.writeText(generatedLink);
-                alert('Link copiato!');
+                alert('✅ Link copiato!');
             };
 
             return (
-                <div className="min-h-screen bg-gray-50 p-4">
-                    <div className="max-w-6xl mx-auto">
-                        {/* Header */}
-                        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h1 className="text-2xl font-bold text-blue-600">{t.dashboard}</h1>
-                                    <p className="text-gray-600">{user.email}</p>
-                                </div>
+                <div className="min-h-screen p-4 md:p-8">
+                    {/* Header con gradiente */}
+                    <div className="gradient-bg text-white rounded-2xl shadow-xl p-6 mb-8">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h1 className="text-3xl font-bold mb-2">{t.dashboard}</h1>
+                                <p className="opacity-90">👋 Benvenuto, {user.displayName}</p>
+                            </div>
+                            <button
+                                onClick={onLogout}
+                                className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-xl transition-all backdrop-blur-sm"
+                            >
+                                {t.logout}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-2 gap-6">
+                        {/* Properties Section */}
+                        <div className="bg-white rounded-2xl shadow-lg p-6 card-hover">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-2xl font-bold text-purple-600">🏠 {t.myProperties}</h2>
                                 <button
-                                    onClick={onLogout}
-                                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                                    onClick={() => setShowAddProperty(!showAddProperty)}
+                                    className="gradient-green text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all"
                                 >
-                                    {t.logout}
+                                    {showAddProperty ? '✕' : '+ ' + t.addProperty}
                                 </button>
                             </div>
-                        </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            {/* Properties Section */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h2 className="text-xl font-bold">{t.myProperties}</h2>
+                            {showAddProperty && (
+                                <form onSubmit={addProperty} className="mb-6 bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl">
+                                    <div className="mb-3">
+                                        <label className="block text-sm font-bold mb-2 text-gray-700">🏠 {t.propertyName}</label>
+                                        <input
+                                            type="text"
+                                            value={newProperty.name}
+                                            onChange={(e) => setNewProperty({...newProperty, name: e.target.value})}
+                                            placeholder="Es: Villa Mare, Appartamento Centro..."
+                                            className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                    
+                                    <div className="mb-3">
+                                        <label className="block text-sm font-bold mb-2 text-gray-700">
+                                            📋 {t.checkInInstructions}
+                                        </label>
+                                        <p className="text-xs text-gray-600 mb-2">{t.instructionsHelp}</p>
+                                        
+                                        {/* Istruzioni multilingua */}
+                                        {languages.map(lang => (
+                                            <div key={lang.code} className="mb-3">
+                                                <label className="block text-xs font-semibold mb-1 text-gray-600">
+                                                    {lang.flag} {lang.name}
+                                                </label>
+                                                <textarea
+                                                    value={newProperty.instructions[lang.code]}
+                                                    onChange={(e) => setNewProperty({
+                                                        ...newProperty,
+                                                        instructions: {
+                                                            ...newProperty.instructions,
+                                                            [lang.code]: e.target.value
+                                                        }
+                                                    })}
+                                                    placeholder={`Istruzioni in ${lang.name}...`}
+                                                    className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 h-20 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                                                    rows="2"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
                                     <button
-                                        onClick={() => setShowPropertyForm(!showPropertyForm)}
-                                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                                        type="submit"
+                                        className="w-full gradient-green text-white py-3 rounded-lg hover:shadow-lg transition-all font-semibold"
                                     >
-                                        {showPropertyForm ? '✕ Chiudi' : '+ ' + t.addProperty}
+                                        💾 Salva Struttura
                                     </button>
-                                </div>
+                                </form>
+                            )}
 
-                                {showPropertyForm && (
-                                    <form onSubmit={addProperty} className="mb-4 p-4 bg-gray-50 rounded-lg">
-                                        <div className="mb-3">
-                                            <label className="block text-sm font-medium mb-1">{t.propertyName}</label>
-                                            <input
-                                                type="text"
-                                                value={newProperty.name}
-                                                onChange={(e) => setNewProperty({...newProperty, name: e.target.value})}
-                                                placeholder="Es: Villa Mare, Appartamento Centro..."
-                                                className="w-full border rounded-lg px-4 py-2"
-                                                required
-                                            />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="block text-sm font-medium mb-1">📋 Istruzioni Check-in</label>
-                                            <textarea
-                                                value={newProperty.instructions}
-                                                onChange={(e) => setNewProperty({...newProperty, instructions: e.target.value})}
-                                                placeholder="Es: WiFi: password123, Parcheggio: via Roma 10, Chiavi: cassetta codice 5678..."
-                                                className="w-full border rounded-lg px-4 py-2 h-32"
-                                                rows="4"
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Queste istruzioni saranno inviate via email all'ospite</p>
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600"
-                                        >
-                                            Salva Struttura
-                                        </button>
-                                    </form>
-                                )}
-
-                                <div className="space-y-2">
-                                    {properties.map(prop => (
-                                        <button
-                                            key={prop.id}
-                                            onClick={() => setSelectedProperty(prop)}
-                                            className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
-                                                selectedProperty?.id === prop.id
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : 'border-gray-200 hover:border-blue-300'
-                                            }`}
-                                        >
-                                            <div className="font-medium">{prop.name}</div>
-                                            {prop.checkInInstructions && (
-                                                <div className="text-xs text-gray-500 mt-1 truncate">
-                                                    📋 {prop.checkInInstructions.substring(0, 60)}...
-                                                </div>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Create Booking Section */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-xl font-bold mb-4">{t.createBooking}</h2>
-                                {selectedProperty ? (
-                                    <form onSubmit={generateBookingLink} className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">{t.guestName}</label>
-                                            <input
-                                                type="text"
-                                                value={bookingForm.guestName}
-                                                onChange={(e) => setBookingForm({...bookingForm, guestName: e.target.value})}
-                                                className="w-full border rounded-lg px-4 py-2"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">{t.checkIn}</label>
-                                            <input
-                                                type="date"
-                                                value={bookingForm.checkIn}
-                                                onChange={(e) => setBookingForm({...bookingForm, checkIn: e.target.value})}
-                                                className="w-full border rounded-lg px-4 py-2"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">{t.checkOut}</label>
-                                            <input
-                                                type="date"
-                                                value={bookingForm.checkOut}
-                                                onChange={(e) => setBookingForm({...bookingForm, checkOut: e.target.value})}
-                                                className="w-full border rounded-lg px-4 py-2"
-                                                required
-                                            />
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            className="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600"
-                                        >
-                                            {t.generateLink}
-                                        </button>
-                                    </form>
-                                ) : (
-                                    <p className="text-gray-500 text-center py-8">
-                                        Seleziona una struttura per creare una prenotazione
-                                    </p>
-                                )}
-
-                                {generatedLink && (
-                                    <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                                        <p className="font-medium mb-2">{t.bookingLink}:</p>
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                value={generatedLink}
-                                                readOnly
-                                                className="flex-1 border rounded px-2 py-1 text-sm"
-                                            />
-                                            <button
-                                                onClick={copyLink}
-                                                className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600"
+                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                                {properties.map(prop => (
+                                    <div
+                                        key={prop.id}
+                                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                                            selectedProperty?.id === prop.id
+                                                ? 'border-purple-500 bg-purple-50 shadow-md'
+                                                : 'border-gray-200 hover:border-purple-300 bg-white'
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div 
+                                                className="flex-1"
+                                                onClick={() => setSelectedProperty(prop)}
                                             >
-                                                {t.copyLink}
+                                                <div className="font-bold text-lg text-gray-800">{prop.name}</div>
+                                                {prop.checkInInstructions && prop.checkInInstructions.it && (
+                                                    <div className="text-xs text-gray-500 mt-1 truncate">
+                                                        📋 {prop.checkInInstructions.it.substring(0, 50)}...
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteProperty(prop.id);
+                                                }}
+                                                className="ml-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition-all"
+                                                title={t.deleteProperty}
+                                            >
+                                                🗑️
                                             </button>
                                         </div>
+                                    </div>
+                                ))}
+                                {properties.length === 0 && (
+                                    <div className="text-center text-gray-400 py-8">
+                                        Nessuna struttura. Aggiungi la prima! 🏠
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Recent Bookings */}
-                        <div className="bg-white rounded-lg shadow-md p-6 mt-6">
-                            <h2 className="text-xl font-bold mb-4">{t.recentBookings}</h2>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-2 text-left">{t.propertyName}</th>
-                                            <th className="px-4 py-2 text-left">{t.guestName}</th>
-                                            <th className="px-4 py-2 text-left">{t.checkIn}</th>
-                                            <th className="px-4 py-2 text-left">{t.checkOut}</th>
-                                            <th className="px-4 py-2 text-left">Status</th>
+                        {/* Create Booking Section */}
+                        <div className="bg-white rounded-2xl shadow-lg p-6 card-hover">
+                            <h2 className="text-2xl font-bold mb-4 text-blue-600">📅 {t.createBooking}</h2>
+                            {selectedProperty ? (
+                                <form onSubmit={generateBookingLink} className="space-y-4">
+                                    <div className="bg-blue-50 p-4 rounded-xl mb-4">
+                                        <div className="text-sm text-gray-600">Struttura selezionata:</div>
+                                        <div className="font-bold text-lg text-blue-600">{selectedProperty.name}</div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-bold mb-2">👤 {t.guestName}</label>
+                                        <input
+                                            type="text"
+                                            value={bookingForm.guestName}
+                                            onChange={(e) => setBookingForm({...bookingForm, guestName: e.target.value})}
+                                            className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">📅 {t.checkIn}</label>
+                                            <input
+                                                type="date"
+                                                value={bookingForm.checkIn}
+                                                onChange={(e) => setBookingForm({...bookingForm, checkIn: e.target.value})}
+                                                className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">📅 {t.checkOut}</label>
+                                            <input
+                                                type="date"
+                                                value={bookingForm.checkOut}
+                                                onChange={(e) => setBookingForm({...bookingForm, checkOut: e.target.value})}
+                                                className="w-full border-2 border-gray-200 rounded-lg px-4 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        className="w-full gradient-blue text-white py-4 rounded-xl hover:shadow-lg transition-all font-semibold text-lg"
+                                    >
+                                        🔗 {t.generateLink}
+                                    </button>
+                                </form>
+                            ) : (
+                                <div className="text-center text-gray-400 py-12">
+                                    <div className="text-6xl mb-4">🏠</div>
+                                    <p>Seleziona una struttura per creare una prenotazione</p>
+                                </div>
+                            )}
+
+                            {generatedLink && (
+                                <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-300">
+                                    <p className="font-bold mb-2 text-green-700">✅ {t.bookingLink}:</p>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={generatedLink}
+                                            readOnly
+                                            className="flex-1 border-2 border-green-300 rounded-lg px-3 py-2 text-sm bg-white"
+                                        />
+                                        <button
+                                            onClick={copyLink}
+                                            className="gradient-green text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all font-semibold"
+                                        >
+                                            📋 {t.copyLink}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Recent Bookings */}
+                    <div className="bg-white rounded-2xl shadow-lg p-6 mt-6 card-hover">
+                        <h2 className="text-2xl font-bold mb-4 text-orange-600">📊 {t.recentBookings}</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gradient-to-r from-orange-50 to-pink-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left font-bold text-gray-700">{t.propertyName}</th>
+                                        <th className="px-4 py-3 text-left font-bold text-gray-700">{t.guestName}</th>
+                                        <th className="px-4 py-3 text-left font-bold text-gray-700">{t.checkIn}</th>
+                                        <th className="px-4 py-3 text-left font-bold text-gray-700">{t.checkOut}</th>
+                                        <th className="px-4 py-3 text-left font-bold text-gray-700">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentBookings.map(booking => (
+                                        <tr key={booking.id} className="border-t border-gray-100 hover:bg-orange-50 transition-colors">
+                                            <td className="px-4 py-3 font-medium">{booking.propertyName}</td>
+                                            <td className="px-4 py-3">{booking.guestName}</td>
+                                            <td className="px-4 py-3">{booking.checkIn}</td>
+                                            <td className="px-4 py-3">{booking.checkOut}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                                    booking.status === 'completed' 
+                                                        ? 'bg-green-100 text-green-700' 
+                                                        : 'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                    {booking.status === 'completed' ? '✅ Completato' : '⏳ In attesa'}
+                                                </span>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {recentBookings.map(booking => (
-                                            <tr key={booking.id} className="border-t">
-                                                <td className="px-4 py-2">{booking.propertyName}</td>
-                                                <td className="px-4 py-2">{booking.guestName}</td>
-                                                <td className="px-4 py-2">{booking.checkIn}</td>
-                                                <td className="px-4 py-2">{booking.checkOut}</td>
-                                                <td className="px-4 py-2">
-                                                    <span className={`px-2 py-1 rounded-full text-xs ${
-                                                        booking.completed 
-                                                            ? 'bg-green-100 text-green-800' 
-                                                            : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                        {booking.completed ? 'Completato' : 'In attesa'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    ))}
+                                    {recentBookings.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="text-center text-gray-400 py-8">
+                                                Nessuna prenotazione ancora 📅
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -620,9 +732,13 @@
 
         // Guest Form Component
         function GuestForm({ t, bookingId }) {
-            const [loading, setLoading] = useState(true);
             const [booking, setBooking] = useState(null);
+            const [property, setProperty] = useState(null);
             const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [submitting, setSubmitting] = useState(false);
+            const [submitted, setSubmitted] = useState(false);
+            const [selectedLanguage, setSelectedLanguage] = useState('it');
             const [formData, setFormData] = useState({
                 email: '',
                 documentNumber: '',
@@ -636,32 +752,88 @@
                 phone: ''
             });
             const [errors, setErrors] = useState({});
-            const [submitting, setSubmitting] = useState(false);
-            const [submitted, setSubmitted] = useState(false);
 
             useEffect(() => {
-                loadBooking();
-                const unsubscribe = window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                const unsubscribe = window.onAuthStateChanged(window.firebaseAuth, async (user) => {
                     setUser(user);
+                    if (user && bookingId) {
+                        await loadBookingData();
+                    }
+                    setLoading(false);
                 });
                 return () => unsubscribe();
             }, [bookingId]);
 
-            const loadBooking = async () => {
+            const loadBookingData = async () => {
                 try {
-                    const docRef = window.doc(window.firebaseDb, 'bookings', bookingId);
-                    const docSnap = await window.getDoc(docRef);
-                    
-                    if (docSnap.exists()) {
-                        setBooking({ id: docSnap.id, ...docSnap.data() });
-                    } else {
-                        alert(t.bookingNotFound);
+                    const bookingDoc = await window.getDoc(window.doc(window.firebaseDb, 'bookings', bookingId));
+                    if (bookingDoc.exists()) {
+                        const bookingData = bookingDoc.data();
+                        setBooking({ id: bookingDoc.id, ...bookingData });
+                        
+                        // Load property data
+                        const propertyDoc = await window.getDoc(window.doc(window.firebaseDb, 'properties', bookingData.propertyId));
+                        if (propertyDoc.exists()) {
+                            setProperty(propertyDoc.data());
+                        }
                     }
                 } catch (error) {
                     console.error('Error loading booking:', error);
+                }
+            };
+
+            const validateForm = () => {
+                const newErrors = {};
+                
+                if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
+                    newErrors.email = t.required;
+                }
+                if (!formData.documentNumber) newErrors.documentNumber = t.required;
+                if (!formData.issueDate) newErrors.issueDate = t.required;
+                if (!formData.expiryDate) newErrors.expiryDate = t.required;
+                if (!formData.issuePlace) newErrors.issuePlace = t.required;
+                if (!formData.firstName) newErrors.firstName = t.required;
+                if (!formData.lastName) newErrors.lastName = t.required;
+                if (!formData.address) newErrors.address = t.required;
+                if (!formData.nationality) newErrors.nationality = t.required;
+                if (!formData.phone) newErrors.phone = t.required;
+
+                setErrors(newErrors);
+                return Object.keys(newErrors).length === 0;
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                
+                if (!validateForm()) {
+                    alert(t.error);
+                    return;
+                }
+
+                setSubmitting(true);
+                try {
+                    // Save guest data with selected language
+                    await window.addDoc(window.collection(window.firebaseDb, 'guestData'), {
+                        ...formData,
+                        bookingId: bookingId,
+                        userId: user.uid,
+                        selectedLanguage: selectedLanguage, // IMPORTANTE: salva la lingua selezionata
+                        submittedAt: window.Timestamp.now()
+                    });
+
+                    // Update booking status
+                    await window.updateDoc(window.doc(window.firebaseDb, 'bookings', bookingId), {
+                        status: 'completed',
+                        completedAt: window.Timestamp.now()
+                    });
+
+                    setSubmitted(true);
+                    alert(t.success);
+                } catch (error) {
+                    console.error('Error submitting data:', error);
                     alert(t.error);
                 } finally {
-                    setLoading(false);
+                    setSubmitting(false);
                 }
             };
 
@@ -671,92 +843,14 @@
                     await window.signInWithPopup(window.firebaseAuth, provider);
                 } catch (error) {
                     console.error('Login error:', error);
-                    alert(t.error);
-                }
-            };
-
-            const validateForm = () => {
-                const newErrors = {};
-                
-                // Required fields
-                Object.keys(formData).forEach(key => {
-                    if (!formData[key].trim()) {
-                        newErrors[key] = t.required;
-                    }
-                });
-
-                // Email validation
-                if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-                    newErrors.email = 'Email non valida';
-                }
-
-                // Date validations
-                if (formData.issueDate && formData.expiryDate) {
-                    if (new Date(formData.issueDate) >= new Date(formData.expiryDate)) {
-                        newErrors.expiryDate = t.invalidDate;
-                    }
-                }
-
-                // Phone validation (basic)
-                if (formData.phone && !/^[\d\s\+\-\(\)]+$/.test(formData.phone)) {
-                    newErrors.phone = t.invalidPhone;
-                }
-
-                setErrors(newErrors);
-                return Object.keys(newErrors).length === 0;
-            };
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                
-                if (!validateForm()) return;
-
-                setSubmitting(true);
-
-                try {
-                    // Save to Firebase - Cloud Functions will handle email sending automatically
-                    const guestData = {
-                        ...formData,
-                        bookingId: booking.id,
-                        propertyName: booking.propertyName,
-                        checkIn: booking.checkIn,
-                        checkOut: booking.checkOut,
-                        guestEmail: formData.email, // Using the email from the form
-                        submittedAt: window.Timestamp.now()
-                    };
-
-                    await window.addDoc(window.collection(window.firebaseDb, 'guestData'), guestData);
-
-                    // Update booking status
-                    const bookingRef = window.doc(window.firebaseDb, 'bookings', booking.id);
-                    await window.updateDoc(bookingRef, { completed: true });
-
-                    // Cloud Functions will automatically:
-                    // 1. Send email to host with passport data
-                    // 2. Send email to guest with check-in instructions
-
-                    setSubmitted(true);
-                } catch (error) {
-                    console.error('Submission error:', error);
-                    alert(t.error);
-                } finally {
-                    setSubmitting(false);
                 }
             };
 
             if (loading) {
                 return (
                     <div className="min-h-screen flex items-center justify-center">
-                        <div className="text-xl">{t.loading}</div>
-                    </div>
-                );
-            }
-
-            if (!booking) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center">
-                        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md">
-                            <h2 className="text-2xl font-bold text-red-600 mb-4">{t.bookingNotFound}</h2>
+                        <div className="text-2xl gradient-bg text-white px-8 py-4 rounded-2xl shadow-xl">
+                            {t.loading}
                         </div>
                     </div>
                 );
@@ -765,22 +859,30 @@
             if (!user) {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-4">
-                        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-                            <h1 className="text-2xl font-bold text-center mb-2">{booking.propertyName}</h1>
-                            <p className="text-center text-gray-600 mb-6">{booking.guestName}</p>
-                            <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                                <p className="text-sm"><strong>{t.checkIn}:</strong> {booking.checkIn}</p>
-                                <p className="text-sm"><strong>{t.checkOut}:</strong> {booking.checkOut}</p>
+                        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+                            <div className="gradient-bg text-white rounded-xl p-6 mb-6 text-center">
+                                <h2 className="text-2xl font-bold">🔐 Login Richiesto</h2>
                             </div>
+                            <p className="text-gray-600 mb-6 text-center">
+                                Effettua il login per compilare i dati di check-in
+                            </p>
                             <button
                                 onClick={handleLogin}
-                                className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+                                className="w-full gradient-blue text-white py-4 rounded-xl hover:shadow-lg transition-all font-semibold"
                             >
-                                <svg className="w-6 h-6" viewBox="0 0 24 24">
-                                    <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
-                                </svg>
-                                {t.login}
+                                🔑 {t.login}
                             </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!booking) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                            <div className="text-6xl mb-4">❌</div>
+                            <h2 className="text-2xl font-bold text-red-600">{t.bookingNotFound}</h2>
                         </div>
                     </div>
                 );
@@ -789,158 +891,180 @@
             if (submitted) {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-4">
-                        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
-                            <div className="text-6xl mb-4">✅</div>
-                            <h2 className="text-2xl font-bold text-green-600 mb-2">{t.success}</h2>
-                            <p className="text-gray-600">{t.success}</p>
+                        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                            <div className="gradient-green text-white rounded-xl p-8 mb-6">
+                                <div className="text-6xl mb-4">✅</div>
+                                <h2 className="text-3xl font-bold">{t.success}</h2>
+                            </div>
+                            <p className="text-gray-600 text-lg">
+                                Grazie! Riceverai a breve un'email con le istruzioni di check-in.
+                            </p>
                         </div>
                     </div>
                 );
             }
 
             return (
-                <div className="min-h-screen bg-gray-50 p-4 py-8">
-                    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
-                        <h1 className="text-2xl font-bold text-center mb-2">{booking.propertyName}</h1>
-                        <p className="text-center text-gray-600 mb-6">{user.email}</p>
+                <div className="min-h-screen p-4 py-8">
+                    {/* Language selector NON fisso */}
+                    <div className="max-w-4xl mx-auto mb-6">
+                        <LanguageSelector currentLang={selectedLanguage} onLanguageChange={setSelectedLanguage} />
+                    </div>
 
-                        <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                            <h3 className="font-semibold mb-2">{t.bookingDates}</h3>
-                            <p className="text-sm"><strong>{t.checkIn}:</strong> {booking.checkIn}</p>
-                            <p className="text-sm"><strong>{t.checkOut}:</strong> {booking.checkOut}</p>
+                    <div className="max-w-4xl mx-auto">
+                        {/* Header colorato */}
+                        <div className="gradient-bg text-white rounded-2xl shadow-xl p-8 mb-6">
+                            <h1 className="text-3xl font-bold mb-4">📝 {t.guestForm}</h1>
+                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
+                                <div className="grid md:grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                        <div className="opacity-75">Struttura</div>
+                                        <div className="font-bold text-lg">{booking.propertyName}</div>
+                                    </div>
+                                    <div>
+                                        <div className="opacity-75">{t.checkIn}</div>
+                                        <div className="font-bold text-lg">{booking.checkIn}</div>
+                                    </div>
+                                    <div>
+                                        <div className="opacity-75">{t.checkOut}</div>
+                                        <div className="font-bold text-lg">{booking.checkOut}</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Document Data */}
-                            <div>
-                                <h3 className="text-lg font-semibold mb-3 text-blue-600">{t.documentData}</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">{t.documentNumber}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.documentNumber}
-                                            onChange={(e) => setFormData({...formData, documentNumber: e.target.value})}
-                                            className={`w-full border rounded-lg px-4 py-2 ${errors.documentNumber ? 'border-red-500' : ''}`}
-                                        />
-                                        {errors.documentNumber && <p className="text-red-500 text-sm mt-1">{errors.documentNumber}</p>}
-                                    </div>
+                        {/* Form */}
+                        <div className="bg-white rounded-2xl shadow-xl p-8">
+                            <form onSubmit={handleSubmit} className="space-y-8">
+                                {/* Document Data */}
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl">
+                                    <h3 className="text-xl font-bold mb-4 text-blue-700">🛂 {t.documentData}</h3>
                                     <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-bold mb-2">{t.documentNumber}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.documentNumber}
+                                                onChange={(e) => setFormData({...formData, documentNumber: e.target.value})}
+                                                className={`w-full border-2 rounded-lg px-4 py-3 ${errors.documentNumber ? 'border-red-500' : 'border-gray-200'} focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all`}
+                                            />
+                                            {errors.documentNumber && <p className="text-red-500 text-sm mt-1">{errors.documentNumber}</p>}
+                                        </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">{t.issueDate}</label>
+                                            <label className="block text-sm font-bold mb-2">{t.issueDate}</label>
                                             <input
                                                 type="date"
                                                 value={formData.issueDate}
                                                 onChange={(e) => setFormData({...formData, issueDate: e.target.value})}
-                                                className={`w-full border rounded-lg px-4 py-2 ${errors.issueDate ? 'border-red-500' : ''}`}
+                                                className={`w-full border-2 rounded-lg px-4 py-3 ${errors.issueDate ? 'border-red-500' : 'border-gray-200'} focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all`}
                                             />
                                             {errors.issueDate && <p className="text-red-500 text-sm mt-1">{errors.issueDate}</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">{t.expiryDate}</label>
+                                            <label className="block text-sm font-bold mb-2">{t.expiryDate}</label>
                                             <input
                                                 type="date"
                                                 value={formData.expiryDate}
                                                 onChange={(e) => setFormData({...formData, expiryDate: e.target.value})}
-                                                className={`w-full border rounded-lg px-4 py-2 ${errors.expiryDate ? 'border-red-500' : ''}`}
+                                                className={`w-full border-2 rounded-lg px-4 py-3 ${errors.expiryDate ? 'border-red-500' : 'border-gray-200'} focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all`}
                                             />
                                             {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">{t.issuePlace}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.issuePlace}
-                                            onChange={(e) => setFormData({...formData, issuePlace: e.target.value})}
-                                            className={`w-full border rounded-lg px-4 py-2 ${errors.issuePlace ? 'border-red-500' : ''}`}
-                                        />
-                                        {errors.issuePlace && <p className="text-red-500 text-sm mt-1">{errors.issuePlace}</p>}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Personal Data */}
-                            <div>
-                                <h3 className="text-lg font-semibold mb-3 text-blue-600">{t.personalData}</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">📧 Email</label>
-                                        <input
-                                            type="email"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                            placeholder="mario.rossi@example.com"
-                                            className={`w-full border rounded-lg px-4 py-2 ${errors.email ? 'border-red-500' : ''}`}
-                                        />
-                                        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-                                        <p className="text-xs text-gray-500 mt-1">Riceverai le istruzioni di check-in a questo indirizzo</p>
-                                    </div>
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">{t.firstName}</label>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-bold mb-2">{t.issuePlace}</label>
                                             <input
                                                 type="text"
-                                                value={formData.firstName}
-                                                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                                                className={`w-full border rounded-lg px-4 py-2 ${errors.firstName ? 'border-red-500' : ''}`}
+                                                value={formData.issuePlace}
+                                                onChange={(e) => setFormData({...formData, issuePlace: e.target.value})}
+                                                className={`w-full border-2 rounded-lg px-4 py-3 ${errors.issuePlace ? 'border-red-500' : 'border-gray-200'} focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all`}
                                             />
-                                            {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">{t.lastName}</label>
-                                            <input
-                                                type="text"
-                                                value={formData.lastName}
-                                                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                                                className={`w-full border rounded-lg px-4 py-2 ${errors.lastName ? 'border-red-500' : ''}`}
-                                            />
-                                            {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">{t.address}</label>
-                                        <input
-                                            type="text"
-                                            value={formData.address}
-                                            onChange={(e) => setFormData({...formData, address: e.target.value})}
-                                            className={`w-full border rounded-lg px-4 py-2 ${errors.address ? 'border-red-500' : ''}`}
-                                        />
-                                        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
-                                    </div>
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">{t.nationality}</label>
-                                            <input
-                                                type="text"
-                                                value={formData.nationality}
-                                                onChange={(e) => setFormData({...formData, nationality: e.target.value})}
-                                                className={`w-full border rounded-lg px-4 py-2 ${errors.nationality ? 'border-red-500' : ''}`}
-                                            />
-                                            {errors.nationality && <p className="text-red-500 text-sm mt-1">{errors.nationality}</p>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">{t.phone}</label>
-                                            <input
-                                                type="tel"
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                                                className={`w-full border rounded-lg px-4 py-2 ${errors.phone ? 'border-red-500' : ''}`}
-                                            />
-                                            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                                            {errors.issuePlace && <p className="text-red-500 text-sm mt-1">{errors.issuePlace}</p>}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-colors disabled:bg-gray-400 font-semibold"
-                            >
-                                {submitting ? t.submitting : t.submit}
-                            </button>
-                        </form>
+                                {/* Personal Data */}
+                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl">
+                                    <h3 className="text-xl font-bold mb-4 text-purple-700">👤 {t.personalData}</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">📧 Email</label>
+                                            <input
+                                                type="email"
+                                                value={formData.email}
+                                                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                                placeholder="mario.rossi@example.com"
+                                                className={`w-full border-2 rounded-lg px-4 py-3 ${errors.email ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all`}
+                                            />
+                                            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                                            <p className="text-xs text-gray-500 mt-1">📬 Riceverai le istruzioni di check-in a questo indirizzo</p>
+                                        </div>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">{t.firstName}</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.firstName}
+                                                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                                                    className={`w-full border-2 rounded-lg px-4 py-3 ${errors.firstName ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all`}
+                                                />
+                                                {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">{t.lastName}</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.lastName}
+                                                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                                                    className={`w-full border-2 rounded-lg px-4 py-3 ${errors.lastName ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all`}
+                                                />
+                                                {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">{t.address}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.address}
+                                                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                                className={`w-full border-2 rounded-lg px-4 py-3 ${errors.address ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all`}
+                                            />
+                                            {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+                                        </div>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">{t.nationality}</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.nationality}
+                                                    onChange={(e) => setFormData({...formData, nationality: e.target.value})}
+                                                    className={`w-full border-2 rounded-lg px-4 py-3 ${errors.nationality ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all`}
+                                                />
+                                                {errors.nationality && <p className="text-red-500 text-sm mt-1">{errors.nationality}</p>}
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">{t.phone}</label>
+                                                <input
+                                                    type="tel"
+                                                    value={formData.phone}
+                                                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                                    className={`w-full border-2 rounded-lg px-4 py-3 ${errors.phone ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all`}
+                                                />
+                                                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="w-full gradient-green text-white py-4 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 font-bold text-lg"
+                                >
+                                    {submitting ? '⏳ ' + t.submitting : '✅ ' + t.submit}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             );
@@ -979,17 +1103,23 @@
             if (loading) {
                 return (
                     <div className="min-h-screen flex items-center justify-center">
-                        <div className="text-xl">{t.loading}</div>
+                        <div className="text-2xl gradient-bg text-white px-8 py-4 rounded-2xl shadow-xl animate-pulse">
+                            {t.loading}
+                        </div>
                     </div>
                 );
             }
 
             return (
                 <div>
-                    {/* Language selector - always visible at top */}
-                    <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2">
-                        <LanguageSelector currentLang={language} onLanguageChange={setLanguage} />
-                    </div>
+                    {/* Language selector at top of page (NOT fixed) - shown only on login and guest form */}
+                    {!isAdmin && (
+                        <div className="bg-white shadow-sm sticky top-0 z-40">
+                            <div className="max-w-7xl mx-auto">
+                                <LanguageSelector currentLang={language} onLanguageChange={setLanguage} />
+                            </div>
+                        </div>
+                    )}
 
                     {/* Routing logic */}
                     {bookingId ? (
