@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check-in Casa Vacanze</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        // Import configuration
+        import { firebaseConfig } from './firebase-config.js';
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Make available globally for React components
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signOut = signOut;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.getDoc = getDoc;
+        window.updateDoc = updateDoc;
+        window.query = query;
+        window.where = where;
+        window.orderBy = orderBy;
+        window.Timestamp = Timestamp;
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Translations
+        const translations = {
+            it: {
+                login: 'Accedi con Google',
+                logout: 'Esci',
+                dashboard: 'Dashboard Amministratore',
+                myProperties: 'Le mie strutture',
+                addProperty: 'Aggiungi Struttura',
+                propertyName: 'Nome Struttura',
+                createBooking: 'Crea Prenotazione',
+                guestName: 'Nome Ospite',
+                checkIn: 'Check-in',
+                checkOut: 'Check-out',
+                generateLink: 'Genera Link',
+                bookingLink: 'Link Prenotazione',
+                copyLink: 'Copia Link',
+                recentBookings: 'Prenotazioni Recenti',
+                guestForm: 'Dati Ospite',
+                documentData: 'Dati Documento',
+                documentNumber: 'Numero Documento',
+                issueDate: 'Data Rilascio',
+                expiryDate: 'Data Scadenza',
+                issuePlace: 'Luogo Rilascio',
+                personalData: 'Dati Anagrafici',
+                firstName: 'Nome',
+                lastName: 'Cognome',
+                address: 'Indirizzo Completo',
+                nationality: 'Nazionalità',
+                phone: 'Telefono',
+                bookingDates: 'Date Prenotazione',
+                submit: 'Invia Dati',
+                submitting: 'Invio in corso...',
+                success: 'Dati inviati con successo!',
+                error: 'Errore durante l\'invio',
+                required: 'Campo obbligatorio',
+                invalidDate: 'Data non valida',
+                invalidPhone: 'Numero di telefono non valido',
+                bookingNotFound: 'Prenotazione non trovata',
+                loading: 'Caricamento...'
+            },
+            en: {
+                login: 'Login with Google',
+                logout: 'Logout',
+                dashboard: 'Admin Dashboard',
+                myProperties: 'My Properties',
+                addProperty: 'Add Property',
+                propertyName: 'Property Name',
+                createBooking: 'Create Booking',
+                guestName: 'Guest Name',
+                checkIn: 'Check-in',
+                checkOut: 'Check-out',
+                generateLink: 'Generate Link',
+                bookingLink: 'Booking Link',
+                copyLink: 'Copy Link',
+                recentBookings: 'Recent Bookings',
+                guestForm: 'Guest Information',
+                documentData: 'Document Data',
+                documentNumber: 'Document Number',
+                issueDate: 'Issue Date',
+                expiryDate: 'Expiry Date',
+                issuePlace: 'Issue Place',
+                personalData: 'Personal Data',
+                firstName: 'First Name',
+                lastName: 'Last Name',
+                address: 'Full Address',
+                nationality: 'Nationality',
+                phone: 'Phone',
+                bookingDates: 'Booking Dates',
+                submit: 'Submit',
+                submitting: 'Submitting...',
+                success: 'Data sent successfully!',
+                error: 'Error sending data',
+                required: 'Required field',
+                invalidDate: 'Invalid date',
+                invalidPhone: 'Invalid phone number',
+                bookingNotFound: 'Booking not found',
+                loading: 'Loading...'
+            },
+            fr: {
+                login: 'Connexion avec Google',
+                logout: 'Déconnexion',
+                dashboard: 'Tableau de bord Admin',
+                myProperties: 'Mes Propriétés',
+                addProperty: 'Ajouter Propriété',
+                propertyName: 'Nom de la Propriété',
+                createBooking: 'Créer Réservation',
+                guestName: 'Nom de l\'Invité',
+                checkIn: 'Arrivée',
+                checkOut: 'Départ',
+                generateLink: 'Générer Lien',
+                bookingLink: 'Lien Réservation',
+                copyLink: 'Copier Lien',
+                recentBookings: 'Réservations Récentes',
+                guestForm: 'Données Invité',
+                documentData: 'Données Document',
+                documentNumber: 'Numéro Document',
+                issueDate: 'Date d\'Émission',
+                expiryDate: 'Date d\'Expiration',
+                issuePlace: 'Lieu d\'Émission',
+                personalData: 'Données Personnelles',
+                firstName: 'Prénom',
+                lastName: 'Nom',
+                address: 'Adresse Complète',
+                nationality: 'Nationalité',
+                phone: 'Téléphone',
+                bookingDates: 'Dates Réservation',
+                submit: 'Envoyer',
+                submitting: 'Envoi en cours...',
+                success: 'Données envoyées avec succès!',
+                error: 'Erreur lors de l\'envoi',
+                required: 'Champ obligatoire',
+                invalidDate: 'Date invalide',
+                invalidPhone: 'Numéro de téléphone invalide',
+                bookingNotFound: 'Réservation non trouvée',
+                loading: 'Chargement...'
+            },
+            de: {
+                login: 'Mit Google anmelden',
+                logout: 'Abmelden',
+                dashboard: 'Admin Dashboard',
+                myProperties: 'Meine Unterkünfte',
+                addProperty: 'Unterkunft Hinzufügen',
+                propertyName: 'Name der Unterkunft',
+                createBooking: 'Buchung Erstellen',
+                guestName: 'Gastname',
+                checkIn: 'Check-in',
+                checkOut: 'Check-out',
+                generateLink: 'Link Generieren',
+                bookingLink: 'Buchungslink',
+                copyLink: 'Link Kopieren',
+                recentBookings: 'Letzte Buchungen',
+                guestForm: 'Gastdaten',
+                documentData: 'Dokumentdaten',
+                documentNumber: 'Dokumentnummer',
+                issueDate: 'Ausstellungsdatum',
+                expiryDate: 'Ablaufdatum',
+                issuePlace: 'Ausstellungsort',
+                personalData: 'Persönliche Daten',
+                firstName: 'Vorname',
+                lastName: 'Nachname',
+                address: 'Vollständige Adresse',
+                nationality: 'Staatsangehörigkeit',
+                phone: 'Telefon',
+                bookingDates: 'Buchungsdaten',
+                submit: 'Absenden',
+                submitting: 'Wird gesendet...',
+                success: 'Daten erfolgreich gesendet!',
+                error: 'Fehler beim Senden',
+                required: 'Pflichtfeld',
+                invalidDate: 'Ungültiges Datum',
+                invalidPhone: 'Ungültige Telefonnummer',
+                bookingNotFound: 'Buchung nicht gefunden',
+                loading: 'Laden...'
+            },
+            es: {
+                login: 'Iniciar sesión con Google',
+                logout: 'Cerrar sesión',
+                dashboard: 'Panel de Administración',
+                myProperties: 'Mis Propiedades',
+                addProperty: 'Añadir Propiedad',
+                propertyName: 'Nombre de la Propiedad',
+                createBooking: 'Crear Reserva',
+                guestName: 'Nombre del Huésped',
+                checkIn: 'Check-in',
+                checkOut: 'Check-out',
+                generateLink: 'Generar Enlace',
+                bookingLink: 'Enlace Reserva',
+                copyLink: 'Copiar Enlace',
+                recentBookings: 'Reservas Recientes',
+                guestForm: 'Datos Huésped',
+                documentData: 'Datos Documento',
+                documentNumber: 'Número Documento',
+                issueDate: 'Fecha Emisión',
+                expiryDate: 'Fecha Vencimiento',
+                issuePlace: 'Lugar Emisión',
+                personalData: 'Datos Personales',
+                firstName: 'Nombre',
+                lastName: 'Apellido',
+                address: 'Dirección Completa',
+                nationality: 'Nacionalidad',
+                phone: 'Teléfono',
+                bookingDates: 'Fechas Reserva',
+                submit: 'Enviar',
+                submitting: 'Enviando...',
+                success: '¡Datos enviados correctamente!',
+                error: 'Error al enviar',
+                required: 'Campo obligatorio',
+                invalidDate: 'Fecha inválida',
+                invalidPhone: 'Número de teléfono inválido',
+                bookingNotFound: 'Reserva no encontrada',
+                loading: 'Cargando...'
+            }
+        };
+
+        // Language flags
+        const languages = [
+            { code: 'it', flag: '🇮🇹', name: 'Italiano' },
+            { code: 'en', flag: '🇬🇧', name: 'English' },
+            { code: 'fr', flag: '🇫🇷', name: 'Français' },
+            { code: 'de', flag: '🇩🇪', name: 'Deutsch' },
+            { code: 'es', flag: '🇪🇸', name: 'Español' }
+        ];
+
+        // Language Selector Component
+        function LanguageSelector({ currentLang, onLanguageChange }) {
+            return (
+                <div className="flex gap-2 justify-center mb-6">
+                    {languages.map(lang => (
+                        <button
+                            key={lang.code}
+                            onClick={() => onLanguageChange(lang.code)}
+                            className={`text-3xl transition-transform hover:scale-110 ${
+                                currentLang === lang.code ? 'scale-125' : 'opacity-50'
+                            }`}
+                            title={lang.name}
+                        >
+                            {lang.flag}
+                        </button>
+                    ))}
+                </div>
+            );
+        }
+
+        // Login Page Component
+        function LoginPage({ t, onLogin }) {
+            const [loading, setLoading] = useState(false);
+
+            const handleLogin = async () => {
+                setLoading(true);
+                try {
+                    const provider = new window.GoogleAuthProvider();
+                    await window.signInWithPopup(window.firebaseAuth, provider);
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert('Errore durante il login');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+                        <h1 className="text-3xl font-bold text-center mb-6 text-blue-600">
+                            Check-in Casa Vacanze
+                        </h1>
+                        <button
+                            onClick={handleLogin}
+                            disabled={loading}
+                            className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-6 h-6" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                            </svg>
+                            {loading ? t.loading : t.login}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Admin Dashboard Component
+        function AdminDashboard({ t, user, onLogout }) {
+            const [properties, setProperties] = useState([]);
+            const [newProperty, setNewProperty] = useState({ name: '', instructions: '' });
+            const [showPropertyForm, setShowPropertyForm] = useState(false);
+            const [selectedProperty, setSelectedProperty] = useState(null);
+            const [bookingForm, setBookingForm] = useState({
+                guestName: '',
+                checkIn: '',
+                checkOut: ''
+            });
+            const [generatedLink, setGeneratedLink] = useState('');
+            const [recentBookings, setRecentBookings] = useState([]);
+
+            useEffect(() => {
+                loadProperties();
+                loadRecentBookings();
+            }, []);
+
+            const loadProperties = async () => {
+                try {
+                    const q = window.query(
+                        window.collection(window.firebaseDb, 'properties'),
+                        window.where('ownerId', '==', user.uid),
+                        window.orderBy('createdAt', 'desc')
+                    );
+                    const snapshot = await window.getDocs(q);
+                    const props = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setProperties(props);
+                } catch (error) {
+                    console.error('Error loading properties:', error);
+                }
+            };
+
+            const loadRecentBookings = async () => {
+                try {
+                    const q = window.query(
+                        window.collection(window.firebaseDb, 'bookings'),
+                        window.where('ownerId', '==', user.uid),
+                        window.orderBy('createdAt', 'desc')
+                    );
+                    const snapshot = await window.getDocs(q);
+                    const bookings = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setRecentBookings(bookings.slice(0, 10));
+                } catch (error) {
+                    console.error('Error loading bookings:', error);
+                }
+            };
+
+            const addProperty = async (e) => {
+                e.preventDefault();
+                if (!newProperty.name.trim()) return;
+
+                try {
+                    await window.addDoc(window.collection(window.firebaseDb, 'properties'), {
+                        name: newProperty.name,
+                        checkInInstructions: newProperty.instructions,
+                        ownerId: user.uid,
+                        ownerEmail: user.email,
+                        createdAt: window.Timestamp.now()
+                    });
+                    setNewProperty({ name: '', instructions: '' });
+                    setShowPropertyForm(false);
+                    loadProperties();
+                } catch (error) {
+                    console.error('Error adding property:', error);
+                }
+            };
+
+            const generateBookingLink = async (e) => {
+                e.preventDefault();
+                if (!selectedProperty || !bookingForm.guestName || !bookingForm.checkIn || !bookingForm.checkOut) {
+                    alert('Compila tutti i campi');
+                    return;
+                }
+
+                try {
+                    const bookingData = {
+                        propertyId: selectedProperty.id,
+                        propertyName: selectedProperty.name,
+                        guestName: bookingForm.guestName,
+                        checkIn: bookingForm.checkIn,
+                        checkOut: bookingForm.checkOut,
+                        ownerId: user.uid,
+                        ownerEmail: user.email,
+                        createdAt: window.Timestamp.now(),
+                        completed: false
+                    };
+
+                    const docRef = await window.addDoc(window.collection(window.firebaseDb, 'bookings'), bookingData);
+                    const link = `${window.location.origin}${window.location.pathname}?booking=${docRef.id}`;
+                    setGeneratedLink(link);
+                    setBookingForm({ guestName: '', checkIn: '', checkOut: '' });
+                    loadRecentBookings();
+                } catch (error) {
+                    console.error('Error creating booking:', error);
+                    alert('Errore durante la creazione della prenotazione');
+                }
+            };
+
+            const copyLink = () => {
+                navigator.clipboard.writeText(generatedLink);
+                alert('Link copiato!');
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-4">
+                    <div className="max-w-6xl mx-auto">
+                        {/* Header */}
+                        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-blue-600">{t.dashboard}</h1>
+                                    <p className="text-gray-600">{user.email}</p>
+                                </div>
+                                <button
+                                    onClick={onLogout}
+                                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                                >
+                                    {t.logout}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                            {/* Properties Section */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-xl font-bold">{t.myProperties}</h2>
+                                    <button
+                                        onClick={() => setShowPropertyForm(!showPropertyForm)}
+                                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                                    >
+                                        {showPropertyForm ? '✕ Chiudi' : '+ ' + t.addProperty}
+                                    </button>
+                                </div>
+
+                                {showPropertyForm && (
+                                    <form onSubmit={addProperty} className="mb-4 p-4 bg-gray-50 rounded-lg">
+                                        <div className="mb-3">
+                                            <label className="block text-sm font-medium mb-1">{t.propertyName}</label>
+                                            <input
+                                                type="text"
+                                                value={newProperty.name}
+                                                onChange={(e) => setNewProperty({...newProperty, name: e.target.value})}
+                                                placeholder="Es: Villa Mare, Appartamento Centro..."
+                                                className="w-full border rounded-lg px-4 py-2"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="block text-sm font-medium mb-1">📋 Istruzioni Check-in</label>
+                                            <textarea
+                                                value={newProperty.instructions}
+                                                onChange={(e) => setNewProperty({...newProperty, instructions: e.target.value})}
+                                                placeholder="Es: WiFi: password123, Parcheggio: via Roma 10, Chiavi: cassetta codice 5678..."
+                                                className="w-full border rounded-lg px-4 py-2 h-32"
+                                                rows="4"
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Queste istruzioni saranno inviate via email all'ospite</p>
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600"
+                                        >
+                                            Salva Struttura
+                                        </button>
+                                    </form>
+                                )}
+
+                                <div className="space-y-2">
+                                    {properties.map(prop => (
+                                        <button
+                                            key={prop.id}
+                                            onClick={() => setSelectedProperty(prop)}
+                                            className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
+                                                selectedProperty?.id === prop.id
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-gray-200 hover:border-blue-300'
+                                            }`}
+                                        >
+                                            <div className="font-medium">{prop.name}</div>
+                                            {prop.checkInInstructions && (
+                                                <div className="text-xs text-gray-500 mt-1 truncate">
+                                                    📋 {prop.checkInInstructions.substring(0, 60)}...
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Create Booking Section */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h2 className="text-xl font-bold mb-4">{t.createBooking}</h2>
+                                {selectedProperty ? (
+                                    <form onSubmit={generateBookingLink} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.guestName}</label>
+                                            <input
+                                                type="text"
+                                                value={bookingForm.guestName}
+                                                onChange={(e) => setBookingForm({...bookingForm, guestName: e.target.value})}
+                                                className="w-full border rounded-lg px-4 py-2"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.checkIn}</label>
+                                            <input
+                                                type="date"
+                                                value={bookingForm.checkIn}
+                                                onChange={(e) => setBookingForm({...bookingForm, checkIn: e.target.value})}
+                                                className="w-full border rounded-lg px-4 py-2"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.checkOut}</label>
+                                            <input
+                                                type="date"
+                                                value={bookingForm.checkOut}
+                                                onChange={(e) => setBookingForm({...bookingForm, checkOut: e.target.value})}
+                                                className="w-full border rounded-lg px-4 py-2"
+                                                required
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            className="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600"
+                                        >
+                                            {t.generateLink}
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <p className="text-gray-500 text-center py-8">
+                                        Seleziona una struttura per creare una prenotazione
+                                    </p>
+                                )}
+
+                                {generatedLink && (
+                                    <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                                        <p className="font-medium mb-2">{t.bookingLink}:</p>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={generatedLink}
+                                                readOnly
+                                                className="flex-1 border rounded px-2 py-1 text-sm"
+                                            />
+                                            <button
+                                                onClick={copyLink}
+                                                className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600"
+                                            >
+                                                {t.copyLink}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Recent Bookings */}
+                        <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+                            <h2 className="text-xl font-bold mb-4">{t.recentBookings}</h2>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left">{t.propertyName}</th>
+                                            <th className="px-4 py-2 text-left">{t.guestName}</th>
+                                            <th className="px-4 py-2 text-left">{t.checkIn}</th>
+                                            <th className="px-4 py-2 text-left">{t.checkOut}</th>
+                                            <th className="px-4 py-2 text-left">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {recentBookings.map(booking => (
+                                            <tr key={booking.id} className="border-t">
+                                                <td className="px-4 py-2">{booking.propertyName}</td>
+                                                <td className="px-4 py-2">{booking.guestName}</td>
+                                                <td className="px-4 py-2">{booking.checkIn}</td>
+                                                <td className="px-4 py-2">{booking.checkOut}</td>
+                                                <td className="px-4 py-2">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${
+                                                        booking.completed 
+                                                            ? 'bg-green-100 text-green-800' 
+                                                            : 'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                        {booking.completed ? 'Completato' : 'In attesa'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Guest Form Component
+        function GuestForm({ t, bookingId }) {
+            const [loading, setLoading] = useState(true);
+            const [booking, setBooking] = useState(null);
+            const [user, setUser] = useState(null);
+            const [formData, setFormData] = useState({
+                email: '',
+                documentNumber: '',
+                issueDate: '',
+                expiryDate: '',
+                issuePlace: '',
+                firstName: '',
+                lastName: '',
+                address: '',
+                nationality: '',
+                phone: ''
+            });
+            const [errors, setErrors] = useState({});
+            const [submitting, setSubmitting] = useState(false);
+            const [submitted, setSubmitted] = useState(false);
+
+            useEffect(() => {
+                loadBooking();
+                const unsubscribe = window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                    setUser(user);
+                });
+                return () => unsubscribe();
+            }, [bookingId]);
+
+            const loadBooking = async () => {
+                try {
+                    const docRef = window.doc(window.firebaseDb, 'bookings', bookingId);
+                    const docSnap = await window.getDoc(docRef);
+                    
+                    if (docSnap.exists()) {
+                        setBooking({ id: docSnap.id, ...docSnap.data() });
+                    } else {
+                        alert(t.bookingNotFound);
+                    }
+                } catch (error) {
+                    console.error('Error loading booking:', error);
+                    alert(t.error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleLogin = async () => {
+                try {
+                    const provider = new window.GoogleAuthProvider();
+                    await window.signInWithPopup(window.firebaseAuth, provider);
+                } catch (error) {
+                    console.error('Login error:', error);
+                    alert(t.error);
+                }
+            };
+
+            const validateForm = () => {
+                const newErrors = {};
+                
+                // Required fields
+                Object.keys(formData).forEach(key => {
+                    if (!formData[key].trim()) {
+                        newErrors[key] = t.required;
+                    }
+                });
+
+                // Email validation
+                if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                    newErrors.email = 'Email non valida';
+                }
+
+                // Date validations
+                if (formData.issueDate && formData.expiryDate) {
+                    if (new Date(formData.issueDate) >= new Date(formData.expiryDate)) {
+                        newErrors.expiryDate = t.invalidDate;
+                    }
+                }
+
+                // Phone validation (basic)
+                if (formData.phone && !/^[\d\s\+\-\(\)]+$/.test(formData.phone)) {
+                    newErrors.phone = t.invalidPhone;
+                }
+
+                setErrors(newErrors);
+                return Object.keys(newErrors).length === 0;
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                
+                if (!validateForm()) return;
+
+                setSubmitting(true);
+
+                try {
+                    // Save to Firebase - Cloud Functions will handle email sending automatically
+                    const guestData = {
+                        ...formData,
+                        bookingId: booking.id,
+                        propertyName: booking.propertyName,
+                        checkIn: booking.checkIn,
+                        checkOut: booking.checkOut,
+                        guestEmail: formData.email, // Using the email from the form
+                        submittedAt: window.Timestamp.now()
+                    };
+
+                    await window.addDoc(window.collection(window.firebaseDb, 'guestData'), guestData);
+
+                    // Update booking status
+                    const bookingRef = window.doc(window.firebaseDb, 'bookings', booking.id);
+                    await window.updateDoc(bookingRef, { completed: true });
+
+                    // Cloud Functions will automatically:
+                    // 1. Send email to host with passport data
+                    // 2. Send email to guest with check-in instructions
+
+                    setSubmitted(true);
+                } catch (error) {
+                    console.error('Submission error:', error);
+                    alert(t.error);
+                } finally {
+                    setSubmitting(false);
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-xl">{t.loading}</div>
+                    </div>
+                );
+            }
+
+            if (!booking) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md">
+                            <h2 className="text-2xl font-bold text-red-600 mb-4">{t.bookingNotFound}</h2>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!user) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+                            <h1 className="text-2xl font-bold text-center mb-2">{booking.propertyName}</h1>
+                            <p className="text-center text-gray-600 mb-6">{booking.guestName}</p>
+                            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                                <p className="text-sm"><strong>{t.checkIn}:</strong> {booking.checkIn}</p>
+                                <p className="text-sm"><strong>{t.checkOut}:</strong> {booking.checkOut}</p>
+                            </div>
+                            <button
+                                onClick={handleLogin}
+                                className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2"
+                            >
+                                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                                </svg>
+                                {t.login}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (submitted) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
+                            <div className="text-6xl mb-4">✅</div>
+                            <h2 className="text-2xl font-bold text-green-600 mb-2">{t.success}</h2>
+                            <p className="text-gray-600">{t.success}</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-4 py-8">
+                    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+                        <h1 className="text-2xl font-bold text-center mb-2">{booking.propertyName}</h1>
+                        <p className="text-center text-gray-600 mb-6">{user.email}</p>
+
+                        <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                            <h3 className="font-semibold mb-2">{t.bookingDates}</h3>
+                            <p className="text-sm"><strong>{t.checkIn}:</strong> {booking.checkIn}</p>
+                            <p className="text-sm"><strong>{t.checkOut}:</strong> {booking.checkOut}</p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Document Data */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3 text-blue-600">{t.documentData}</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">{t.documentNumber}</label>
+                                        <input
+                                            type="text"
+                                            value={formData.documentNumber}
+                                            onChange={(e) => setFormData({...formData, documentNumber: e.target.value})}
+                                            className={`w-full border rounded-lg px-4 py-2 ${errors.documentNumber ? 'border-red-500' : ''}`}
+                                        />
+                                        {errors.documentNumber && <p className="text-red-500 text-sm mt-1">{errors.documentNumber}</p>}
+                                    </div>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.issueDate}</label>
+                                            <input
+                                                type="date"
+                                                value={formData.issueDate}
+                                                onChange={(e) => setFormData({...formData, issueDate: e.target.value})}
+                                                className={`w-full border rounded-lg px-4 py-2 ${errors.issueDate ? 'border-red-500' : ''}`}
+                                            />
+                                            {errors.issueDate && <p className="text-red-500 text-sm mt-1">{errors.issueDate}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.expiryDate}</label>
+                                            <input
+                                                type="date"
+                                                value={formData.expiryDate}
+                                                onChange={(e) => setFormData({...formData, expiryDate: e.target.value})}
+                                                className={`w-full border rounded-lg px-4 py-2 ${errors.expiryDate ? 'border-red-500' : ''}`}
+                                            />
+                                            {errors.expiryDate && <p className="text-red-500 text-sm mt-1">{errors.expiryDate}</p>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">{t.issuePlace}</label>
+                                        <input
+                                            type="text"
+                                            value={formData.issuePlace}
+                                            onChange={(e) => setFormData({...formData, issuePlace: e.target.value})}
+                                            className={`w-full border rounded-lg px-4 py-2 ${errors.issuePlace ? 'border-red-500' : ''}`}
+                                        />
+                                        {errors.issuePlace && <p className="text-red-500 text-sm mt-1">{errors.issuePlace}</p>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Personal Data */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3 text-blue-600">{t.personalData}</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">📧 Email</label>
+                                        <input
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                            placeholder="mario.rossi@example.com"
+                                            className={`w-full border rounded-lg px-4 py-2 ${errors.email ? 'border-red-500' : ''}`}
+                                        />
+                                        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                                        <p className="text-xs text-gray-500 mt-1">Riceverai le istruzioni di check-in a questo indirizzo</p>
+                                    </div>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.firstName}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.firstName}
+                                                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                                                className={`w-full border rounded-lg px-4 py-2 ${errors.firstName ? 'border-red-500' : ''}`}
+                                            />
+                                            {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.lastName}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.lastName}
+                                                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                                                className={`w-full border rounded-lg px-4 py-2 ${errors.lastName ? 'border-red-500' : ''}`}
+                                            />
+                                            {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">{t.address}</label>
+                                        <input
+                                            type="text"
+                                            value={formData.address}
+                                            onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                            className={`w-full border rounded-lg px-4 py-2 ${errors.address ? 'border-red-500' : ''}`}
+                                        />
+                                        {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
+                                    </div>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.nationality}</label>
+                                            <input
+                                                type="text"
+                                                value={formData.nationality}
+                                                onChange={(e) => setFormData({...formData, nationality: e.target.value})}
+                                                className={`w-full border rounded-lg px-4 py-2 ${errors.nationality ? 'border-red-500' : ''}`}
+                                            />
+                                            {errors.nationality && <p className="text-red-500 text-sm mt-1">{errors.nationality}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">{t.phone}</label>
+                                            <input
+                                                type="tel"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                                className={`w-full border rounded-lg px-4 py-2 ${errors.phone ? 'border-red-500' : ''}`}
+                                            />
+                                            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-colors disabled:bg-gray-400 font-semibold"
+                            >
+                                {submitting ? t.submitting : t.submit}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [language, setLanguage] = useState('it');
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [isAdmin, setIsAdmin] = useState(false);
+            
+            const t = translations[language];
+            
+            // Get booking ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingId = urlParams.get('booking');
+
+            useEffect(() => {
+                const unsubscribe = window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                    setUser(user);
+                    setLoading(false);
+                    // If user is logged in and no booking ID, assume admin
+                    if (user && !bookingId) {
+                        setIsAdmin(true);
+                    }
+                });
+                return () => unsubscribe();
+            }, [bookingId]);
+
+            const handleLogout = async () => {
+                await window.signOut(window.firebaseAuth);
+                setIsAdmin(false);
+            };
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-xl">{t.loading}</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    {/* Language selector - always visible at top */}
+                    <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2">
+                        <LanguageSelector currentLang={language} onLanguageChange={setLanguage} />
+                    </div>
+
+                    {/* Routing logic */}
+                    {bookingId ? (
+                        // Guest form flow
+                        <GuestForm t={t} bookingId={bookingId} />
+                    ) : user && isAdmin ? (
+                        // Admin dashboard
+                        <AdminDashboard t={t} user={user} onLogout={handleLogout} />
+                    ) : (
+                        // Login page
+                        <LoginPage t={t} />
+                    )}
+                </div>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
