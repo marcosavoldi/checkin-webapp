@@ -113,9 +113,12 @@
                 bookingNotFound: 'Prenotazione non trovata',
                 loading: 'Caricamento...',
                 deleteProperty: 'Elimina Struttura',
-                confirmDelete: 'Sei sicuro di voler eliminare questa struttura?',
+                deleteBooking: 'Elimina Prenotazione',
+                confirmDelete: 'Sei sicuro di voler eliminare?',
                 checkInInstructions: 'Istruzioni Check-in',
-                instructionsHelp: 'Le istruzioni verranno inviate all\'ospite nella lingua da lui selezionata'
+                instructionsHelp: 'Le istruzioni verranno inviate all\'ospite nella lingua da lui selezionata',
+                selectLanguage: 'Seleziona la tua lingua',
+                emailWillReceive: 'Riceverai le istruzioni a questo indirizzo nella lingua selezionata'
             },
             en: {
                 login: 'Login with Google',
@@ -155,9 +158,12 @@
                 bookingNotFound: 'Booking not found',
                 loading: 'Loading...',
                 deleteProperty: 'Delete Property',
-                confirmDelete: 'Are you sure you want to delete this property?',
+                deleteBooking: 'Delete Booking',
+                confirmDelete: 'Are you sure you want to delete?',
                 checkInInstructions: 'Check-in Instructions',
-                instructionsHelp: 'Instructions will be sent to the guest in their selected language'
+                instructionsHelp: 'Instructions will be sent to the guest in their selected language',
+                selectLanguage: 'Select your language',
+                emailWillReceive: 'You will receive instructions at this address in the selected language'
             },
             fr: {
                 login: 'Connexion avec Google',
@@ -197,9 +203,12 @@
                 bookingNotFound: 'Réservation non trouvée',
                 loading: 'Chargement...',
                 deleteProperty: 'Supprimer Propriété',
-                confirmDelete: 'Êtes-vous sûr de vouloir supprimer cette propriété?',
+                deleteBooking: 'Supprimer Réservation',
+                confirmDelete: 'Êtes-vous sûr de vouloir supprimer?',
                 checkInInstructions: 'Instructions d\'Arrivée',
-                instructionsHelp: 'Les instructions seront envoyées à l\'invité dans la langue sélectionnée'
+                instructionsHelp: 'Les instructions seront envoyées à l\'invité dans la langue sélectionnée',
+                selectLanguage: 'Sélectionnez votre langue',
+                emailWillReceive: 'Vous recevrez les instructions à cette adresse dans la langue sélectionnée'
             },
             de: {
                 login: 'Mit Google anmelden',
@@ -239,9 +248,12 @@
                 bookingNotFound: 'Buchung nicht gefunden',
                 loading: 'Laden...',
                 deleteProperty: 'Unterkunft Löschen',
-                confirmDelete: 'Sind Sie sicher, dass Sie diese Unterkunft löschen möchten?',
+                deleteBooking: 'Buchung Löschen',
+                confirmDelete: 'Sind Sie sicher, dass Sie löschen möchten?',
                 checkInInstructions: 'Check-in Anweisungen',
-                instructionsHelp: 'Anweisungen werden dem Gast in der ausgewählten Sprache gesendet'
+                instructionsHelp: 'Anweisungen werden dem Gast in der ausgewählten Sprache gesendet',
+                selectLanguage: 'Wählen Sie Ihre Sprache',
+                emailWillReceive: 'Sie erhalten Anweisungen an diese Adresse in der ausgewählten Sprache'
             },
             es: {
                 login: 'Iniciar sesión con Google',
@@ -281,9 +293,12 @@
                 bookingNotFound: 'Reserva no encontrada',
                 loading: 'Cargando...',
                 deleteProperty: 'Eliminar Propiedad',
-                confirmDelete: '¿Está seguro de que desea eliminar esta propiedad?',
+                deleteBooking: 'Eliminar Reserva',
+                confirmDelete: '¿Está seguro de que desea eliminar?',
                 checkInInstructions: 'Instrucciones de Check-in',
-                instructionsHelp: 'Las instrucciones se enviarán al huésped en el idioma seleccionado'
+                instructionsHelp: 'Las instrucciones se enviarán al huésped en el idioma seleccionado',
+                selectLanguage: 'Seleccione su idioma',
+                emailWillReceive: 'Recibirá instrucciones en esta dirección en el idioma seleccionado'
             }
         };
 
@@ -296,22 +311,27 @@
             { code: 'es', flag: '🇪🇸', name: 'Español' }
         ];
 
-        // Language Selector Component (NON FISSO - solo in alto alla pagina)
-        function LanguageSelector({ currentLang, onLanguageChange }) {
+        // Language Selector Component - UN SOLO COMPONENTE RIUTILIZZABILE
+        function LanguageSelector({ currentLang, onLanguageChange, showLabel = false, t }) {
             return (
-                <div className="flex gap-3 justify-center py-4">
-                    {languages.map(lang => (
-                        <button
-                            key={lang.code}
-                            onClick={() => onLanguageChange(lang.code)}
-                            className={`text-3xl transition-all hover:scale-110 ${
-                                currentLang === lang.code ? 'scale-125 drop-shadow-lg' : 'opacity-50 grayscale'
-                            }`}
-                            title={lang.name}
-                        >
-                            {lang.flag}
-                        </button>
-                    ))}
+                <div className="flex flex-col items-center gap-2">
+                    {showLabel && (
+                        <label className="text-sm font-bold text-gray-700">{t.selectLanguage}</label>
+                    )}
+                    <div className="flex gap-3 justify-center">
+                        {languages.map(lang => (
+                            <button
+                                key={lang.code}
+                                onClick={() => onLanguageChange(lang.code)}
+                                className={`text-3xl transition-all hover:scale-110 ${
+                                    currentLang === lang.code ? 'scale-125 drop-shadow-lg' : 'opacity-50 grayscale'
+                                }`}
+                                title={lang.name}
+                            >
+                                {lang.flag}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             );
         }
@@ -446,6 +466,19 @@
                     alert('✅ Struttura eliminata con successo!');
                 } catch (error) {
                     console.error('Error deleting property:', error);
+                    alert('❌ Errore durante l\'eliminazione');
+                }
+            };
+
+            const deleteBooking = async (bookingId) => {
+                if (!window.confirm(t.confirmDelete)) return;
+                
+                try {
+                    await window.deleteDoc(window.doc(window.firebaseDb, 'bookings', bookingId));
+                    loadRecentBookings();
+                    alert('✅ Prenotazione eliminata con successo!');
+                } catch (error) {
+                    console.error('Error deleting booking:', error);
                     alert('❌ Errore durante l\'eliminazione');
                 }
             };
@@ -695,6 +728,7 @@
                                         <th className="px-4 py-3 text-left font-bold text-gray-700">{t.checkIn}</th>
                                         <th className="px-4 py-3 text-left font-bold text-gray-700">{t.checkOut}</th>
                                         <th className="px-4 py-3 text-left font-bold text-gray-700">Status</th>
+                                        <th className="px-4 py-3 text-left font-bold text-gray-700">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -713,11 +747,20 @@
                                                     {booking.status === 'completed' ? '✅ Completato' : '⏳ In attesa'}
                                                 </span>
                                             </td>
+                                            <td className="px-4 py-3">
+                                                <button
+                                                    onClick={() => deleteBooking(booking.id)}
+                                                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition-all"
+                                                    title={t.deleteBooking}
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                     {recentBookings.length === 0 && (
                                         <tr>
-                                            <td colSpan="5" className="text-center text-gray-400 py-8">
+                                            <td colSpan="6" className="text-center text-gray-400 py-8">
                                                 Nessuna prenotazione ancora 📅
                                             </td>
                                         </tr>
@@ -731,14 +774,13 @@
         }
 
         // Guest Form Component
-        function GuestForm({ t, bookingId }) {
+        function GuestForm({ t, bookingId, language, onLanguageChange }) {
             const [booking, setBooking] = useState(null);
             const [property, setProperty] = useState(null);
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             const [submitting, setSubmitting] = useState(false);
             const [submitted, setSubmitted] = useState(false);
-            const [selectedLanguage, setSelectedLanguage] = useState('it');
             const [formData, setFormData] = useState({
                 email: '',
                 documentNumber: '',
@@ -811,15 +853,42 @@
                 }
 
                 setSubmitting(true);
+                
+                console.log('🔍 DEBUG - Inizio invio form');
+                console.log('📧 Email ospite:', formData.email);
+                console.log('🌍 Lingua selezionata:', language);
+                console.log('📋 Booking ID:', bookingId);
+                
                 try {
-                    // Save guest data with selected language
-                    await window.addDoc(window.collection(window.firebaseDb, 'guestData'), {
-                        ...formData,
+                    // CRITICAL: Save guest data with ALL required fields
+                    const guestDataToSave = {
+                        // Form data
+                        email: formData.email,
+                        documentNumber: formData.documentNumber,
+                        issueDate: formData.issueDate,
+                        expiryDate: formData.expiryDate,
+                        issuePlace: formData.issuePlace,
+                        firstName: formData.firstName,
+                        lastName: formData.lastName,
+                        address: formData.address,
+                        nationality: formData.nationality,
+                        phone: formData.phone,
+                        
+                        // CRITICAL fields for Cloud Functions
                         bookingId: bookingId,
                         userId: user.uid,
-                        selectedLanguage: selectedLanguage, // IMPORTANTE: salva la lingua selezionata
+                        selectedLanguage: language, // IMPORTANTE: lingua per le istruzioni
                         submittedAt: window.Timestamp.now()
-                    });
+                    };
+
+                    console.log('💾 Salvataggio dati:', guestDataToSave);
+
+                    const docRef = await window.addDoc(
+                        window.collection(window.firebaseDb, 'guestData'), 
+                        guestDataToSave
+                    );
+
+                    console.log('✅ Documento creato con ID:', docRef.id);
 
                     // Update booking status
                     await window.updateDoc(window.doc(window.firebaseDb, 'bookings', bookingId), {
@@ -827,11 +896,15 @@
                         completedAt: window.Timestamp.now()
                     });
 
+                    console.log('✅ Booking aggiornato a completed');
+                    console.log('📧 Ora le Cloud Functions dovrebbero inviare le email...');
+
                     setSubmitted(true);
-                    alert(t.success);
+                    alert(t.success + '\n\nControlla la tua email: ' + formData.email);
                 } catch (error) {
-                    console.error('Error submitting data:', error);
-                    alert(t.error);
+                    console.error('❌ Errore durante l\'invio:', error);
+                    console.error('Dettagli errore:', error.message);
+                    alert(t.error + ': ' + error.message);
                 } finally {
                     setSubmitting(false);
                 }
@@ -896,9 +969,15 @@
                                 <div className="text-6xl mb-4">✅</div>
                                 <h2 className="text-3xl font-bold">{t.success}</h2>
                             </div>
-                            <p className="text-gray-600 text-lg">
+                            <p className="text-gray-600 text-lg mb-4">
                                 Grazie! Riceverai a breve un'email con le istruzioni di check-in.
                             </p>
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                                <p className="text-sm text-gray-700">
+                                    📧 Email: <strong>{formData.email}</strong><br/>
+                                    🌍 Lingua: <strong>{languages.find(l => l.code === language)?.name}</strong>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 );
@@ -906,11 +985,6 @@
 
             return (
                 <div className="min-h-screen p-4 py-8">
-                    {/* Language selector NON fisso */}
-                    <div className="max-w-4xl mx-auto mb-6">
-                        <LanguageSelector currentLang={selectedLanguage} onLanguageChange={setSelectedLanguage} />
-                    </div>
-
                     <div className="max-w-4xl mx-auto">
                         {/* Header colorato */}
                         <div className="gradient-bg text-white rounded-2xl shadow-xl p-8 mb-6">
@@ -935,6 +1009,19 @@
 
                         {/* Form */}
                         <div className="bg-white rounded-2xl shadow-xl p-8">
+                            {/* UNICO Language Selector - controlla sia la lingua UI che quella delle istruzioni */}
+                            <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border-2 border-purple-200">
+                                <LanguageSelector 
+                                    currentLang={language} 
+                                    onLanguageChange={onLanguageChange}
+                                    showLabel={true}
+                                    t={t}
+                                />
+                                <p className="text-xs text-gray-600 mt-2 text-center">
+                                    {t.emailWillReceive}
+                                </p>
+                            </div>
+
                             <form onSubmit={handleSubmit} className="space-y-8">
                                 {/* Document Data */}
                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl">
@@ -997,7 +1084,7 @@
                                                 className={`w-full border-2 rounded-lg px-4 py-3 ${errors.email ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all`}
                                             />
                                             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-                                            <p className="text-xs text-gray-500 mt-1">📬 Riceverai le istruzioni di check-in a questo indirizzo</p>
+                                            <p className="text-xs text-gray-500 mt-1">📬 {t.emailWillReceive}</p>
                                         </div>
                                         <div className="grid md:grid-cols-2 gap-4">
                                             <div>
@@ -1112,19 +1199,24 @@
 
             return (
                 <div>
-                    {/* Language selector at top of page (NOT fixed) - shown only on login and guest form */}
+                    {/* Language selector UNICO - mostrato solo per guest form e login */}
                     {!isAdmin && (
-                        <div className="bg-white shadow-sm sticky top-0 z-40">
-                            <div className="max-w-7xl mx-auto">
-                                <LanguageSelector currentLang={language} onLanguageChange={setLanguage} />
+                        <div className="bg-white shadow-sm py-3">
+                            <div className="max-w-7xl mx-auto px-4">
+                                <LanguageSelector currentLang={language} onLanguageChange={setLanguage} t={t} />
                             </div>
                         </div>
                     )}
 
                     {/* Routing logic */}
                     {bookingId ? (
-                        // Guest form flow
-                        <GuestForm t={t} bookingId={bookingId} />
+                        // Guest form flow - passa language e onLanguageChange
+                        <GuestForm 
+                            t={t} 
+                            bookingId={bookingId} 
+                            language={language} 
+                            onLanguageChange={setLanguage} 
+                        />
                     ) : user && isAdmin ? (
                         // Admin dashboard
                         <AdminDashboard t={t} user={user} onLogout={handleLogout} />
